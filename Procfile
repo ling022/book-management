@@ -1,0 +1,1 @@
+web: java -Djava.io.tmpdir=/tmp -jar target/book-management-system-1.0.0.jar
