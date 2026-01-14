@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bookmanagement.dao.BorrowMapper">
+
+    <resultMap id="BorrowRecordResultMap" type="BorrowRecord">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="bookId" column="book_id"/>
+        <result property="borrowDate" column="borrow_date"/>
+        <result property="dueDate" column="due_date"/>
+        <result property="returnDate" column="return_date"/>
+        <result property="status" column="status"/>
+        <result property="createdTime" column="created_time"/>
+
+        <!-- 关联用户信息 -->
+        <association property="user" javaType="User">
+            <id property="id" column="user_id"/>
+            <result property="username" column="username"/>
+            <result property="email" column="email"/>
+            <result property="phone" column="phone"/>
+        </association>
+
+        <!-- 关联图书信息 -->
+        <association property="book" javaType="Book">
+            <id property="id" column="book_id"/>
+            <result property="title" column="title"/>
+            <result property="author" column="author"/>
+            <result property="isbn" column="isbn"/>
+            <result property="availableCopies" column="available_copies"/>
+        </association>
+    </resultMap>
+
+    <!-- 添加借阅记录 -->
+    <insert id="insertBorrowRecord" parameterType="BorrowRecord" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO borrow_records (user_id, book_id, borrow_date, due_date, return_date, status)
+        VALUES (#{userId}, #{bookId}, #{borrowDate}, #{dueDate}, #{returnDate}, #{status})
+    </insert>
+
+    <!-- 更新借阅记录 -->
+    <update id="updateBorrowRecord" parameterType="BorrowRecord">
+        UPDATE borrow_records
+        SET user_id = #{userId},
+            book_id = #{bookId},
+            borrow_date = #{borrowDate},
+            due_date = #{dueDate},
+            return_date = #{returnDate},
+            status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询借阅记录（带关联信息） -->
+    <select id="selectBorrowRecordById" parameterType="int" resultMap="BorrowRecordResultMap">
+        SELECT
+            br.*,
+            u.username,
+            u.email,
+            u.phone,
+            b.title,
+            b.author,
+            b.isbn,
+            b.available_copies
+        FROM borrow_records br
+        LEFT JOIN users u ON br.user_id = u.id
+        LEFT JOIN books b ON br.book_id = b.id
+        WHERE br.id = #{id}
+    </select>
+
+    <!-- 根据用户ID查询借阅记录 -->
+    <select id="selectBorrowRecordsByUserId" parameterType="int" resultMap="BorrowRecordResultMap">
+        SELECT
+            br.*,
+            b.title,
+            b.author,
+            b.isbn,
+            b.available_copies
+        FROM borrow_records br
+        LEFT JOIN books b ON br.book_id = b.id
+        WHERE br.user_id = #{userId}
+        ORDER BY br.created_time DESC
+    </select>
+
+    <!-- 查询所有借阅记录（多表关联查询） -->
+    <select id="selectAllBorrowRecords" resultMap="BorrowRecordResultMap">
+        SELECT
+            br.*,
+            u.username,
+            u.email,
+            u.phone,
+            b.title,
+            b.author,
+            b.isbn,
+            b.available_copies
+        FROM borrow_records br
+        LEFT JOIN users u ON br.user_id = u.id
+        LEFT JOIN books b ON br.book_id = b.id
+        ORDER BY br.created_time DESC
+    </select>
+
+    <!-- 查询未归还的借阅记录 -->
+    <select id="selectBorrowingRecords" resultMap="BorrowRecordResultMap">
+        SELECT
+            br.*,
+            u.username,
+            b.title,
+            b.author
+        FROM borrow_records br
+        LEFT JOIN users u ON br.user_id = u.id
+        LEFT JOIN books b ON br.book_id = b.id
+        WHERE br.status = 'BORROWED'
+        ORDER BY br.due_date ASC
+    </select>
+
+    <!-- 查询逾期记录 -->
+    <select id="selectOverdueRecords" resultMap="BorrowRecordResultMap">
+        SELECT
+            br.*,
+            u.username,
+            b.title,
+            b.author
+        FROM borrow_records br
+        LEFT JOIN users u ON br.user_id = u.id
+        LEFT JOIN books b ON br.book_id = b.id
+        WHERE br.status = 'BORROWED'
+          AND br.due_date &lt; CURDATE()
+        ORDER BY br.due_date ASC
+    </select>
+
+    <!-- 还书操作 -->
+    <update id="returnBook">
+        UPDATE borrow_records
+        SET return_date = #{returnDate},
+            status = 'RETURNED'
+        WHERE id = #{id}
+    </update>
+
+    <!-- 查询借阅记录总数 -->
+    <select id="countBorrowRecords" resultType="int">
+        SELECT COUNT(*) FROM borrow_records
+    </select>
+
+    <!-- 检查图书是否有借阅记录 -->
+    <select id="countBorrowRecordsByBookId" parameterType="int" resultType="int">
+    SELECT COUNT(*) FROM borrow_records
+    WHERE book_id = #{bookId}
+</select>
+
+    <!-- 查询用户的借阅数量 -->
+    <select id="countUserBorrowRecords" parameterType="int" resultType="int">
+        SELECT COUNT(*)
+        FROM borrow_records
+        WHERE user_id = #{userId}
+          AND status = 'BORROWED'
+    </select>
+
+    <!-- 检查是否已借阅该书 -->
+    <select id="checkBorrowed" resultMap="BorrowRecordResultMap">
+        SELECT *
+        FROM borrow_records
+        WHERE user_id = #{userId}
+          AND book_id = #{bookId}
+          AND status != 'RETURNED'
+    </select>
+
+    <!-- 更新借阅记录状态 -->
+    <update id="updateBorrowRecordStatus">
+        UPDATE borrow_records
+        SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新应还日期（续借） -->
+    <update id="updateDueDate">
+        UPDATE borrow_records
+        SET due_date = #{dueDate}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据条件查询借阅记录 -->
+    <select id="selectBorrowRecordsByCondition" resultMap="BorrowRecordResultMap">
+        SELECT
+        br.*,
+        u.username,
+        b.title,
+        b.author
+        FROM borrow_records br
+        LEFT JOIN users u ON br.user_id = u.id
+        LEFT JOIN books b ON br.book_id = b.id
+        WHERE 1=1
+        <if test="userId != null">
+            AND br.user_id = #{userId}
+        </if>
+        <if test="bookId != null">
+            AND br.book_id = #{bookId}
+        </if>
+        <if test="status != null and status != ''">
+            AND br.status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (u.username LIKE CONCAT('%', #{keyword}, '%')
+            OR b.title LIKE CONCAT('%', #{keyword}, '%')
+            OR b.author LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY br.created_time DESC
+    </select>
+
+    <!-- 分页查询借阅记录 -->
+    <select id="selectBorrowRecordsByPage" resultMap="BorrowRecordResultMap">
+        SELECT
+            br.*,
+            u.username,
+            b.title,
+            b.author
+        FROM borrow_records br
+        LEFT JOIN users u ON br.user_id = u.id
+        LEFT JOIN books b ON br.book_id = b.id
+        ORDER BY br.created_time DESC
+        LIMIT #{start}, #{pageSize}
+    </select>
+
+    <!-- 删除借阅记录 -->
+    <delete id="deleteBorrowRecord" parameterType="int">
+        DELETE FROM borrow_records WHERE id = #{id}
+    </delete>
+
+    <!-- 根据图书ID查询借阅记录 -->
+    <select id="selectBorrowRecordsByBookId" parameterType="int" resultMap="BorrowRecordResultMap">
+        SELECT
+            br.*,
+            u.username
+        FROM borrow_records br
+        LEFT JOIN users u ON br.user_id = u.id
+        WHERE br.book_id = #{bookId}
+        ORDER BY br.borrow_date DESC
+    </select>
+
+    <!-- 统计借阅数据 -->
+    <select id="getBorrowStatistics" resultType="map">
+        SELECT
+            COUNT(*) as total_borrows,
+            SUM(CASE WHEN status = 'BORROWED' THEN 1 ELSE 0 END) as current_borrows,
+            SUM(CASE WHEN status = 'RETURNED' THEN 1 ELSE 0 END) as returned_borrows,
+            SUM(CASE WHEN status = 'OVERDUE' THEN 1 ELSE 0 END) as overdue_borrows
+        FROM borrow_records
+    </select>
+
+    <!-- 加锁查询借阅记录（用于事务） -->
+    <select id="selectBorrowRecordByIdForUpdate" parameterType="int" resultMap="BorrowRecordResultMap">
+        SELECT
+            br.*,
+            u.username,
+            b.title,
+            b.author
+        FROM borrow_records br
+        LEFT JOIN users u ON br.user_id = u.id
+        LEFT JOIN books b ON br.book_id = b.id
+        WHERE br.id = #{id}
+        FOR UPDATE
+    </select>
+    <select id="selectBorrowTrend" resultType="java.util.HashMap">
+    SELECT
+        DATE(borrow_date) as date,
+        COUNT(*) as count
+    FROM borrow_records
+    WHERE borrow_date >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+    GROUP BY DATE(borrow_date)
+    ORDER BY date
+</select>
+    <select id="selectBorrowCountByDateRange" resultType="java.util.HashMap">
+    SELECT
+        DATE(borrow_date) as date,
+        COUNT(*) as count,
+        SUM(CASE WHEN status = 'BORROWED' THEN 1 ELSE 0 END) as borrowing_count,
+        SUM(CASE WHEN status = 'RETURNED' THEN 1 ELSE 0 END) as returned_count,
+        SUM(CASE WHEN status = 'OVERDUE' THEN 1 ELSE 0 END) as overdue_count
+    FROM borrow_records
+    WHERE borrow_date BETWEEN #{startDate} AND #{endDate}
+    GROUP BY DATE(borrow_date)
+    ORDER BY date
+</select>
+    <select id="selectPopularBooks" resultType="java.util.HashMap">
+    SELECT
+        b.id as bookId,
+        b.title as title,
+        b.author as author,
+        b.category as category,
+        COUNT(br.id) as borrowCount
+    FROM books b
+    LEFT JOIN borrow_records br ON b.id = br.book_id
+    WHERE b.status != 'MAINTENANCE'
+    GROUP BY b.id, b.title, b.author, b.category
+    ORDER BY borrowCount DESC, b.created_time DESC
+    LIMIT 10
+</select>
+</mapper>

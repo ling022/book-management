@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bookmanagement.dao.UserMapper">
+
+    <resultMap id="UserResultMap" type="User">
+        <id property="id" column="id"/>
+        <result property="username" column="username"/>
+        <result property="password" column="password"/>
+        <result property="role" column="role"/>
+        <result property="email" column="email"/>
+        <result property="phone" column="phone"/>
+        <result property="createdTime" column="created_time"/>
+        <!-- 确保 superAdmin 映射正确 -->
+        <result property="superAdmin" column="super_admin"/>
+    </resultMap>
+
+    <!-- 删除用户 -->
+    <delete id="deleteUser" parameterType="int">
+        DELETE FROM users WHERE id = #{id}
+    </delete>
+
+    <!-- 添加用户 -->
+    <insert id="insertUser" parameterType="User" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO users (username, password, role, email, phone)
+        VALUES (#{username}, #{password}, #{role}, #{email}, #{phone})
+    </insert>
+
+    <!-- 更新用户信息 -->
+    <update id="updateUser" parameterType="User">
+    UPDATE users
+    SET username = #{username},
+        password = #{password},
+        role = #{role},
+        email = #{email},
+        phone = #{phone}
+    WHERE id = #{id}
+</update>
+
+    <!-- 根据ID查询用户 -->
+    <select id="selectUserById" parameterType="int" resultMap="UserResultMap">
+        SELECT * FROM users WHERE id = #{id}
+    </select>
+
+    <!-- 根据用户名查询用户 -->
+    <select id="selectUserByUsername" parameterType="string" resultMap="UserResultMap">
+        SELECT * FROM users WHERE username = #{username}
+    </select>
+
+    <!-- 查询所有用户 -->
+    <select id="selectAllUsers" resultMap="UserResultMap">
+        SELECT * FROM users ORDER BY created_time DESC
+    </select>
+
+    <!-- 用户登录验证 -->
+    <select id="login" resultMap="UserResultMap">
+        SELECT * FROM users
+        WHERE username = #{username} AND password = #{password}
+    </select>
+
+    <!-- 查询用户总数 -->
+    <select id="countUsers" resultType="int">
+        SELECT COUNT(*) FROM users
+    </select>
+
+    <!-- 分页查询用户 -->
+    <select id="selectUsersByPage" resultMap="UserResultMap">
+        SELECT * FROM users
+        ORDER BY created_time DESC
+        LIMIT #{start}, #{pageSize}
+    </select>
+
+    <!-- 更新用户密码 -->
+    <update id="updatePassword">
+        UPDATE users
+        SET password = #{password}
+        WHERE id = #{id}
+    </update>
+
+</mapper>
