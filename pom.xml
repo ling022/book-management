@@ -102,11 +102,16 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- MySQL驱动 -->
+        <!-- MySQL驱动  Render只支持PostgreSQL
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>5.1.49</version>
+        </dependency>-->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.2.27</version>  <!-- Java 7兼容版本 -->
         </dependency>
 
         <!-- Jackson JSON -->
